@@ -1,8 +1,8 @@
-defmodule NervesSystemKebow.MixProject do
+defmodule NervesSystemKeybow.MixProject do
   use Mix.Project
 
   @github_organization "ElixirSeattle"
-  @app :nerves_system_kebow
+  @app :nerves_system_keybow
   @version Path.join(__DIR__, "VERSION")
            |> File.read!()
            |> String.trim()
