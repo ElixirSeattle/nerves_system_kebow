@@ -3,6 +3,7 @@ defmodule NervesSystemKeybow.MixProject do
 
   @github_organization "ElixirSeattle"
   @app :nerves_system_keybow
+  @source_url "https://github.com/#{@github_organization}/#{@app}"
   @version Path.join(__DIR__, "VERSION")
            |> File.read!()
            |> String.trim()
@@ -18,17 +19,25 @@ defmodule NervesSystemKeybow.MixProject do
       package: package(),
       deps: deps(),
       aliases: [loadconfig: [&bootstrap/1], docs: ["docs", &copy_images/1]],
-      docs: [extras: ["README.md"], main: "readme"]
+      docs: docs(),
+      preferred_cli_env: %{
+        docs: :docs,
+        "hex.build": :docs,
+        "hex.publish": :docs
+      }
     ]
   end
 
   def application do
+    check_rpi_v2_ack!()
     []
   end
 
   defp bootstrap(args) do
     set_target()
     Application.start(:nerves_bootstrap)
+    # We're compiling locally so ack v2 req
+    Application.put_env(:nerves, :rpi_v2_ack, true)
     Mix.Task.run("loadconfig", args)
   end
 
@@ -50,10 +59,10 @@ defmodule NervesSystemKeybow.MixProject do
   defp deps do
     [
       {:nerves, "~> 1.5.4 or ~> 1.6.0", runtime: false},
-      {:nerves_system_br, "1.12.0", runtime: false},
+      {:nerves_system_br, "1.12.3", runtime: false},
       {:nerves_toolchain_armv6_rpi_linux_gnueabi, "~> 1.3.0", runtime: false},
       {:nerves_system_linter, "~> 0.4", only: [:dev, :test], runtime: false},
-      {:ex_doc, "~> 0.18", only: [:dev, :test], runtime: false}
+      {:ex_doc, "~> 0.22", only: :docs, runtime: false}
     ]
   end
 
@@ -63,11 +72,21 @@ defmodule NervesSystemKeybow.MixProject do
     """
   end
 
+  defp docs do
+    [
+      extras: ["README.md", "CHANGELOG.md"],
+      main: "readme",
+      source_ref: "v#{@version}",
+      source_url: @source_url,
+      skip_undefined_reference_warnings_on: ["CHANGELOG.md"]
+    ]
+  end
+
   defp package do
     [
       files: package_files(),
       licenses: ["Apache 2.0"],
-      links: %{"GitHub" => "https://github.com/#{@github_organization}/#{@app}"}
+      links: %{"GitHub" => @source_url}
     ]
   end
 
@@ -84,6 +103,7 @@ defmodule NervesSystemKeybow.MixProject do
       "linux-4.19.defconfig",
       "mix.exs",
       "nerves_defconfig",
+      "nerves_initramfs.conf",
       "post-build.sh",
       "post-createfs.sh",
       "ramoops.dts",
@@ -110,6 +130,42 @@ defmodule NervesSystemKeybow.MixProject do
       apply(Mix, :target, [:target])
     else
       System.put_env("MIX_TARGET", "target")
+    end
+  end
+
+  defp check_rpi_v2_ack!() do
+    acked? = Application.get_env(:nerves, :rpi_v2_ack) || System.get_env("NERVES_RPI_V2_ACK")
+
+    unless acked? do
+      Mix.raise("""
+
+
+      You are using #{@app} >= 2.0.0 which is technically
+      backwards compatible, but requires one manual step if
+      you are attempting to update the firmware on an existing
+      device via ssh, upload script, NervesHub, or other remote
+      firmware update procedure.
+
+      You will need to validate the running firmware on the
+      device before installing a firmware built with this system.
+      Otherwise, you will get an unexpected and misleading fwup error.
+
+      To validate and avoid the fwup error, run:
+
+        Nerves.Runtime.validate_firmware()
+
+      Or if using :nerves_runtime < 0.11.2, run:
+
+        Nerves.Runtime.KV.put("nerves_fw_validated", "1")
+
+      If you are burning the firmware directly to a SD card, then
+      nothing needs to be done.
+
+      To allow compilation to complete, acknowledge you have read
+      this warning by adding this line to your `config.exs`:
+
+        config :nerves, rpi_v2_ack: true
+      """)
     end
   end
 end
