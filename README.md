@@ -1,3 +1,6 @@
+This repo has moved to the nerves-keyboard org:
+https://github.com/nerves-keyboard/nerves_system_keybow/
+
 # Raspberry Pi Model Zero
 
 [![CircleCI](https://circleci.com/gh/nerves-project/nerves_system_rpi0.svg?style=svg)](https://circleci.com/gh/nerves-project/nerves_system_rpi0)
